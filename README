@@ -1,4 +1,4 @@
-Ironhide is a plugin for a framework called Quasar, I made this a plugin rather than making it a part of the framework
+Ironhide is a service for a framework called Quasar, I made this a service rather than making it a part of the framework
 because the framework shouldn't force Mongodb or Redis. This is more of an example on how to hook into Quasar's 
 app route handling and execute a security check before allowing a client to view the requested page. 
 
