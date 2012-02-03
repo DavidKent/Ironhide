@@ -38,13 +38,14 @@ var MongoDB = module.exports = function( database, ip, port, serverOptions, dbOp
         onSuccess - {Function} called if setModel is successful
 */
 MongoDB.prototype.setModel = function( collectionName, onSuccess ) {
+    var self = this;
     if (!this._hasConnection) {
          throw Error( 'Name: "No Connection Found", Description: '
          + '"No connection was found when trying to access the database collection."' );
         return;
     }
     this._connection.collection(collectionName, function(err, collection){
-        this._model = collection;
+        self._model = collection;
         onSuccess();
     });
 };
@@ -86,10 +87,11 @@ MongoDB.prototype.connect = function( callback ) {
         adds 'users' collection to noSql db if dne, sets Model on completion.
 */
 MongoDB.prototype.addCollections = function(callback) {
+    var self = this;
     this.setModel('users', function() {
-        if(this._model === undefined) {
-            this._connection.createCollection('users', function() {
-                this.setModel('users', callback);
+        if(self._model === undefined) {
+            self._connection.createCollection('users', function() {
+                self.setModel('users', callback);
             });
         }
     });
@@ -130,6 +132,56 @@ MongoDB.prototype.findOneUser = function( user, callback ) {
 };
 
 
+
+/*
+    Function: canRegister
+
+        Can the user register or does he have too many accounts on this IP
+    
+    Parameters:
+        
+        ip - {String} get all users with IP 
+        allowed - (Function) called when user is allowed  
+        notallowed - {Function} called if user is not allowed
+*/
+MongoDB.prototype.canRegister = function( ip, allowed, notallowed ) {
+    this._model.find({ 'ip' : ip}, function(err, items) {
+        if(items.length > 3)
+            {
+                notallowed();
+            }
+        else
+            allowed();
+    });
+}
+
+
+
+/*
+    Function: isCorrectLogin
+
+        Is the users supplied information correct? Check mongoDB
+    
+    Parameters:
+        
+        user - {String} user to find
+        password - (String) 
+        correct - {Function} if user is found and password corresponds to said user
+        incorrect - {Function} if user is NOT found or password is incorrect
+*/
+MongoDB.prototype.isCorrectLogin = function ( user, password, correct, incorrect ) {
+    this.findOneUser(user, function (err, cursor) {
+        console.log(user);
+        if(cursor === null){
+            incorrect();
+            return;
+        }
+        if(password === cursor.password)
+            correct();    
+        else
+            incorrect();
+    });
+};
 
 /*
     Function: updateUser
@@ -260,10 +312,10 @@ MongoDB.prototype.logOut = function( user, callback ) {
         callback - {Function} callback performed after completion
         reg_options - {Object} example: {email : x, birthday : y}
 */
-MongoDB.prototype.registerUser = function( user, password, privLevel, reg_options, callback ) {
-    reg_options['password'] = password;
-    reg_options['privLevel'] = privLevel;
-    this.updateUser(user, true, reg_options, callback);
+MongoDB.prototype.registerUser = function( user, pass, plvl, reg_options, callback ) {
+    var remail = reg_options['email'];
+    this._model.insert({username:user, password : pass, privLevel: plvl, email : remail }, function(err,docs){});
+    //this.updateUser(user, true, reg_options, callback);
 };
 
 
@@ -283,6 +335,18 @@ MongoDB.prototype.setPassword = function( user, pass, callback ) {
     this.updateUser(user, false, {password : pass}, callback);
 };
 
+
+
+/*
+    Function: getPrivLevel
+
+        get current privLevel of a user
+    
+    Parameters:
+        
+        user - {String} username to search
+        callback - {Function} callback performed after completion PARAMS (privLevel)
+*/
 MongoDB.prototype.getPrivLevel = function( user, callback ) {
     this.findOneUser( user, function(err, cursor) {
         callback(cursor.privLevel);
