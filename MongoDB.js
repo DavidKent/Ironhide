@@ -23,6 +23,7 @@ var MongoDB = module.exports = function( database, ip, port, serverOptions, dbOp
     this._server;
     this._model;
     this._hasConnection = false;
+    this._mongo = mongo;
 };
 
 
@@ -45,8 +46,16 @@ MongoDB.prototype.setModel = function( collectionName, onSuccess ) {
         return;
     }
     this._connection.collection(collectionName, function(err, collection){
-        self._model = collection;
-        onSuccess();
+        if(!err) {
+           self._model = collection;
+           onSuccess();
+        }
+        else
+        {
+            self._connection.createCollection(collectionName, function() {
+                self.setModel(collectionName, onSuccess);
+            });
+        }
     });
 };
 
@@ -314,7 +323,7 @@ MongoDB.prototype.logOut = function( user, callback ) {
 */
 MongoDB.prototype.registerUser = function( user, pass, plvl, reg_options, callback ) {
     var remail = reg_options['email'];
-    this._model.insert({username:user, password : pass, privLevel: plvl, email : remail }, function(err,docs){});
+    this._model.insert({username:user, password: pass, privLevel: plvl, email : remail }, function(err,docs){});
     //this.updateUser(user, true, reg_options, callback);
 };
 
